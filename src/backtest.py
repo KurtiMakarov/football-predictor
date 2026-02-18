@@ -189,6 +189,7 @@ def optimize_weights_for_league(
     league_id: int,
     league_season: int,
     seasons_back: int = 3,
+    fast: bool = False,
 ) -> Dict[str, Any]:
     base = cfg.weights.__dict__
     candidates: List[Dict[str, float]] = []
@@ -205,11 +206,13 @@ def optimize_weights_for_league(
                         }
                     )
     # Keep search bounded for API usage and runtime.
-    candidates = candidates[:54]
+    candidates = candidates[:6] if fast else candidates[:54]
 
     best = {"score": 999.0, "brier": 999.0, "logloss": 999.0, "acc": 0.0, "weights": {}}
 
-    for cand in candidates:
+    total = len(candidates)
+    for idx, cand in enumerate(candidates, start=1):
+        print(f"  candidate {idx}/{total}: {cand}")
         preds_all: List[Tuple[float, float, float]] = []
         outs_all: List[str] = []
         for i in range(1, seasons_back + 1):
@@ -234,11 +237,17 @@ def optimize_weights_for_league(
     return best
 
 
-def run_backtest(cfg: AppConfig, seasons_back: int = 3) -> Dict[int, Dict[str, CalibrationModel]]:
+def run_backtest(
+    cfg: AppConfig,
+    seasons_back: int = 3,
+    league_ids: List[int] | None = None,
+) -> Dict[int, Dict[str, CalibrationModel]]:
     client = ApiFootballClient(cfg)
     league_models: Dict[int, Dict[str, CalibrationModel]] = {}
 
     for league in cfg.leagues:
+        if league_ids and league.id not in league_ids:
+            continue
         preds_all: Dict[str, List[Tuple[float, float, float]]] = {}
         outs_all: Dict[str, List[str]] = {}
 
@@ -260,22 +269,38 @@ def run_backtest(cfg: AppConfig, seasons_back: int = 3) -> Dict[int, Dict[str, C
     return league_models
 
 
-def run_tuning(cfg: AppConfig, seasons_back: int = 3) -> Dict[str, Any]:
+def run_tuning(
+    cfg: AppConfig,
+    seasons_back: int = 3,
+    league_ids: List[int] | None = None,
+    fast: bool = False,
+) -> Dict[str, Any]:
     client = ApiFootballClient(cfg)
-    payload: Dict[str, Any] = {"leagues": {}}
+    payload: Dict[str, Any] = {"leagues": {}, "errors": {}}
 
     for league in cfg.leagues:
-        best = optimize_weights_for_league(
-            cfg, client, league.id, league.season, seasons_back=seasons_back
-        )
-        payload["leagues"][str(league.id)] = {
-            "name": league.name,
-            "weights": best.get("weights", {}),
-            "metrics": {
-                "brier": best.get("brier"),
-                "logloss": best.get("logloss"),
-                "accuracy": best.get("acc"),
-                "samples": best.get("n", 0),
-            },
-        }
+        if league_ids and league.id not in league_ids:
+            continue
+        print(f"Tuning league: {league.name} ({league.id})")
+        try:
+            best = optimize_weights_for_league(
+                cfg, client, league.id, league.season, seasons_back=seasons_back, fast=fast
+            )
+            payload["leagues"][str(league.id)] = {
+                "name": league.name,
+                "weights": best.get("weights", {}),
+                "metrics": {
+                    "brier": best.get("brier"),
+                    "logloss": best.get("logloss"),
+                    "accuracy": best.get("acc"),
+                    "samples": best.get("n", 0),
+                },
+            }
+            print(f"Completed: {league.name} | acc={best.get('acc', 0):.3f} brier={best.get('brier', 0):.4f}")
+        except Exception as e:
+            payload["errors"][str(league.id)] = {
+                "name": league.name,
+                "error": str(e),
+            }
+            print(f"Failed: {league.name} | {e}")
     return payload

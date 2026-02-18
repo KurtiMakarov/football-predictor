@@ -81,6 +81,13 @@ def _normalize_probs(p_home: float, p_draw: float, p_away: float) -> Tuple[float
     return p_home / s, p_draw / s, p_away / s
 
 
+def _prob_floor(p_home: float, p_draw: float, p_away: float, floor: float = 0.02) -> Tuple[float, float, float]:
+    p_home = max(floor, p_home)
+    p_draw = max(floor, p_draw)
+    p_away = max(floor, p_away)
+    return _normalize_probs(p_home, p_draw, p_away)
+
+
 def _entropy(p1: float, px: float, p2: float) -> float:
     eps = 1e-9
     p1 = max(eps, p1)
@@ -191,6 +198,9 @@ def compute_prediction(
     if calibration is not None:
         from .calibration import apply_calibration
         p_home, p_draw, p_away = apply_calibration(p_home, p_draw, p_away, calibration)
+
+    # Final probability floor prevents pathological zeros from chained transforms.
+    p_home, p_draw, p_away = _prob_floor(p_home, p_draw, p_away, floor=0.02)
 
     confidence = float(max(p_home, p_draw, p_away))
 

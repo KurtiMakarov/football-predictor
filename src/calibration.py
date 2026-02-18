@@ -39,7 +39,10 @@ def fit_calibration(
     global_draw = outcomes.count("X") / total
     global_away = outcomes.count("2") / total
 
-    def build_for_class(class_idx: int, label: str) -> List[float]:
+    # Laplace-style smoothing to avoid hard zeros in sparse/imbalanced bins.
+    alpha = 2.0
+
+    def build_for_class(class_idx: int, label: str, prior: float) -> List[float]:
         sums = [0] * bins
         counts = [0] * bins
         for (p1, px, p2), out in zip(preds, outcomes):
@@ -51,19 +54,14 @@ def fit_calibration(
         calibrated = []
         for i in range(bins):
             if counts[i] == 0:
-                if label == "1":
-                    calibrated.append(global_home)
-                elif label == "X":
-                    calibrated.append(global_draw)
-                else:
-                    calibrated.append(global_away)
+                calibrated.append(prior)
             else:
-                calibrated.append(sums[i] / counts[i])
+                calibrated.append((sums[i] + alpha * prior) / (counts[i] + alpha))
         return calibrated
 
-    home = build_for_class(0, "1")
-    draw = build_for_class(1, "X")
-    away = build_for_class(2, "2")
+    home = build_for_class(0, "1", global_home)
+    draw = build_for_class(1, "X", global_draw)
+    away = build_for_class(2, "2", global_away)
 
     return CalibrationModel(edges=edges, home=home, draw=draw, away=away)
 
@@ -78,9 +76,10 @@ def apply_calibration(
     bx = _bin_index(model.edges, px)
     b2 = _bin_index(model.edges, p2)
 
-    c1 = model.home[b1]
-    cx = model.draw[bx]
-    c2 = model.away[b2]
+    floor = 0.02
+    c1 = max(floor, model.home[b1])
+    cx = max(floor, model.draw[bx])
+    c2 = max(floor, model.away[b2])
 
     s = c1 + cx + c2
     if s <= 0:

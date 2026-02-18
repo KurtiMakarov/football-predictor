@@ -245,7 +245,11 @@ def predict(cfg: AppConfig, date_str: str) -> None:
                     [("1", pred.odds_p1), ("X", pred.odds_px), ("2", pred.odds_p2)],
                     key=lambda x: x[1],
                 )
-                if market_best[1] >= cfg.prediction.market_favorite_threshold and pick != market_best[0]:
+                model_map = {"1": pred.p_home, "X": pred.p_draw, "2": pred.p_away}
+                model_for_market = model_map[market_best[0]]
+                strong_market = market_best[1] >= max(0.67, cfg.prediction.market_favorite_threshold)
+                severe_gap = (market_best[1] - model_for_market) >= 0.25
+                if strong_market and severe_gap and pick != market_best[0]:
                     pick = "-"
 
             all_rows.append(
@@ -291,8 +295,11 @@ def main() -> None:
 
     p_backtest = sub.add_parser("backtest", help="Run backtest and build calibration")
     p_backtest.add_argument("--seasons", type=int, default=3, help="Seasons back")
+    p_backtest.add_argument("--league-ids", default="", help="Comma-separated league ids, e.g. 39,140")
     p_tune = sub.add_parser("tune", help="Optimize per-league weights")
     p_tune.add_argument("--seasons", type=int, default=3, help="Seasons back")
+    p_tune.add_argument("--league-ids", default="", help="Comma-separated league ids, e.g. 39,140")
+    p_tune.add_argument("--fast", action="store_true", help="Faster and less exhaustive tuning")
 
     args = parser.parse_args()
     cfg = load_config(args.config)
@@ -302,13 +309,22 @@ def main() -> None:
     elif args.cmd == "predict":
         predict(cfg, args.date)
     elif args.cmd == "backtest":
-        models = run_backtest(cfg, seasons_back=args.seasons)
+        league_ids = [int(x.strip()) for x in args.league_ids.split(",") if x.strip()] if args.league_ids else None
+        models = run_backtest(cfg, seasons_back=args.seasons, league_ids=league_ids)
         save_calibration(cfg.calibration.path, models)
         print(f"Calibration saved to {cfg.calibration.path}")
     elif args.cmd == "tune":
-        tuned = run_tuning(cfg, seasons_back=args.seasons)
+        league_ids = [int(x.strip()) for x in args.league_ids.split(",") if x.strip()] if args.league_ids else None
+        tuned = run_tuning(cfg, seasons_back=args.seasons, league_ids=league_ids, fast=args.fast)
         save_tuned_weights(cfg.tuning.path, tuned)
         print(f"Tuned weights saved to {cfg.tuning.path}")
+        leagues_done = len(tuned.get("leagues", {}))
+        errors = tuned.get("errors", {})
+        print(f"Leagues tuned: {leagues_done}")
+        if errors:
+            print(f"Leagues with errors: {len(errors)}")
+            for _, item in errors.items():
+                print(f"- {item.get('name')}: {item.get('error')}")
 
 
 if __name__ == "__main__":

@@ -239,7 +239,11 @@ def predict_api():
                         [("1", pred.odds_p1), ("X", pred.odds_px), ("2", pred.odds_p2)],
                         key=lambda x: x[1],
                     )
-                    if market_best[1] >= cfg.prediction.market_favorite_threshold and pick != market_best[0]:
+                    model_map = {"1": pred.p_home, "X": pred.p_draw, "2": pred.p_away}
+                    model_for_market = model_map[market_best[0]]
+                    strong_market = market_best[1] >= max(0.67, cfg.prediction.market_favorite_threshold)
+                    severe_gap = (market_best[1] - model_for_market) >= 0.25
+                    if strong_market and severe_gap and pick != market_best[0]:
                         pick = "-"
                 market_favorite = "-"
                 disagreement = "-"
