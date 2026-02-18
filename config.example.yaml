@@ -50,7 +50,9 @@ weights:
     UNK: 0.15
 
 prediction:
-  min_confidence: 0.43
+  min_confidence: 0.50
+  market_favorite_threshold: 0.60
+  no_bet_on_market_disagreement: true
 
 odds:
   enabled: true
@@ -58,6 +60,10 @@ odds:
 calibration:
   enabled: true
   path: "data/calibration.json"
+
+tuning:
+  enabled: true
+  path: "data/weights_tuned.json"
 
 cache:
   enabled: true

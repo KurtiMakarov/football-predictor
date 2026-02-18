@@ -11,6 +11,8 @@ from flask import Flask, jsonify, render_template, request
 from .config import load_config
 from .api_football import ApiFootballClient
 from .calibration import load_calibration, strength_bucket
+from .segments import calibration_conditions, odds_strength_segment
+from .tuned_weights import load_tuned_weights
 
 
 load_dotenv()
@@ -47,6 +49,7 @@ def predict_api():
         league_goal_averages,
         league_base_rates,
         extract_lineup_starting,
+        table_segment,
     )
     from .model import compute_prediction, compute_strength_diff
     from .odds import parse_odds_payload
@@ -62,6 +65,10 @@ def predict_api():
     rows = []
     try:
         for league in cfg.leagues:
+            tuned = load_tuned_weights(cfg.tuning.path, league.id) if cfg.tuning.enabled else {}
+            weights_for_league = dict(cfg.weights.__dict__)
+            weights_for_league.update(tuned)
+
             fixtures_payload = client.fixtures(league=league.id, season=league.season, date=date_str)
             fixtures = fixtures_payload.get("response", [])
             if not fixtures:
@@ -107,8 +114,8 @@ def predict_api():
                 home_recent = home_recent_payload.get("response", [])
                 away_recent = away_recent_payload.get("response", [])
 
-                home_form = compute_team_form(home_recent, home_id, cfg.history_matches, cfg.weights.form_decay)
-                away_form = compute_team_form(away_recent, away_id, cfg.history_matches, cfg.weights.form_decay)
+                home_form = compute_team_form(home_recent, home_id, cfg.history_matches, float(weights_for_league.get("form_decay", cfg.weights.form_decay)))
+                away_form = compute_team_form(away_recent, away_id, cfg.history_matches, float(weights_for_league.get("form_decay", cfg.weights.form_decay)))
 
                 home_inj_payload = client.injuries(league=league.id, season=league.season, team=home_id)
                 away_inj_payload = client.injuries(league=league.id, season=league.season, team=away_id)
@@ -120,7 +127,7 @@ def predict_api():
                 rest_home = compute_rest_days(home_recent, home_id, match_date)
                 rest_away = compute_rest_days(away_recent, away_id, match_date)
                 h2h_home_ppg, h2h_away_ppg = compute_h2h_ppg(
-                    league_recent, home_id, away_id, cfg.history_matches, cfg.weights.form_decay
+                    league_recent, home_id, away_id, cfg.history_matches, float(weights_for_league.get("form_decay", cfg.weights.form_decay))
                 )
 
                 odds_probs = None
@@ -186,10 +193,13 @@ def predict_api():
                     h2h_away_ppg=h2h_away_ppg,
                     lineup_missing_home=lineup_missing_home,
                     lineup_missing_away=lineup_missing_away,
-                    weights=cfg.weights.__dict__,
+                    weights=weights_for_league,
                 )
 
-                calibration = load_calibration(cfg.calibration.path, league.id, condition=strength_bucket(strength_diff)) if cfg.calibration.enabled else None
+                odds_seg = odds_strength_segment(odds_probs)
+                table_seg = table_segment(table.get(home_id), table.get(away_id))
+                cconds = calibration_conditions(strength_bucket(strength_diff), table_seg, odds_seg)
+                calibration = load_calibration(cfg.calibration.path, league.id, condition=cconds) if cfg.calibration.enabled else None
 
                 pred = compute_prediction(
                     home_form=home_form,
@@ -207,7 +217,7 @@ def predict_api():
                     league_avg_home_goals=league_avg_home,
                     league_avg_away_goals=league_avg_away,
                     max_goal=cfg.max_goal,
-                    weights=cfg.weights.__dict__,
+                    weights=weights_for_league,
                     odds_probs=odds_probs,
                     base_rates=base_rates,
                     calibration=calibration,
@@ -219,6 +229,18 @@ def predict_api():
                     key=lambda x: x[1],
                 )
                 pick = best[0] if pred.confidence >= cfg.prediction.min_confidence else "-"
+                if (
+                    cfg.prediction.no_bet_on_market_disagreement
+                    and pred.odds_p1 is not None
+                    and pred.odds_px is not None
+                    and pred.odds_p2 is not None
+                ):
+                    market_best = max(
+                        [("1", pred.odds_p1), ("X", pred.odds_px), ("2", pred.odds_p2)],
+                        key=lambda x: x[1],
+                    )
+                    if market_best[1] >= cfg.prediction.market_favorite_threshold and pick != market_best[0]:
+                        pick = "-"
                 market_favorite = "-"
                 disagreement = "-"
                 if pred.odds_p1 is not None and pred.odds_px is not None and pred.odds_p2 is not None:

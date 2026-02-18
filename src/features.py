@@ -34,7 +34,7 @@ class TableInfo:
 @dataclass
 class InjuryInfo:
     team_id: int
-    missing: int
+    missing: float
 
 
 def _fixtures_to_df(fixtures: List[dict]) -> pd.DataFrame:
@@ -287,12 +287,46 @@ def compute_table(standings_payload: dict) -> Dict[int, TableInfo]:
 
 def compute_injuries(injuries_payload: dict, team_id: int) -> InjuryInfo:
     injuries = injuries_payload.get("response", [])
-    missing = 0
+    missing = 0.0
     for item in injuries:
         player = item.get("player", {})
-        if player.get("id"):
-            missing += 1
+        if not player.get("id"):
+            continue
+        # API payload fields vary by plan/provider; use robust fallback strings.
+        kind = " ".join(
+            str(x or "")
+            for x in [
+                item.get("type"),
+                item.get("reason"),
+                player.get("type"),
+                player.get("reason"),
+            ]
+        ).lower()
+        weight = 1.0
+        if any(token in kind for token in ["doubt", "question", "minor", "knock"]):
+            weight = 0.4
+        elif any(token in kind for token in ["suspens", "ban"]):
+            weight = 0.9
+        elif any(token in kind for token in ["acl", "fracture", "surgery", "hamstring", "knee"]):
+            weight = 1.2
+        missing += weight
     return InjuryInfo(team_id=team_id, missing=missing)
+
+
+def table_segment(home_table: TableInfo | None, away_table: TableInfo | None, table_size: int = 20) -> str:
+    if not home_table or not away_table:
+        return "unknown"
+    top_cut = max(4, table_size // 4)
+    low_cut = table_size - top_cut + 1
+    home_pos = home_table.position
+    away_pos = away_table.position
+    if home_pos <= top_cut and away_pos <= top_cut:
+        return "top_vs_top"
+    if home_pos >= low_cut and away_pos >= low_cut:
+        return "low_vs_low"
+    if (home_pos <= top_cut and away_pos >= low_cut) or (away_pos <= top_cut and home_pos >= low_cut):
+        return "top_vs_low"
+    return "mid_mix"
 
 
 def league_goal_averages(fixtures: List[dict]) -> Tuple[float, float]:

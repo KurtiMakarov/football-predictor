@@ -96,19 +96,24 @@ def strength_bucket(strength_diff: float) -> str:
     return "even"
 
 
-def load_calibration(path: str, league_id: int, condition: str = "all") -> Optional[CalibrationModel]:
+def load_calibration(
+    path: str, league_id: int, condition: str | List[str] = "all"
+) -> Optional[CalibrationModel]:
     if not os.path.exists(path):
         return None
     with open(path, "r", encoding="utf-8") as f:
         payload = json.load(f)
     league_key = str(league_id)
     data = payload.get("leagues", {}).get(league_key, {})
-    if condition in data:
-        data = data.get(condition)
-    elif "all" in data:
-        data = data.get("all")
-    else:
-        data = None
+    keys = [condition] if isinstance(condition, str) else list(condition)
+    if "all" not in keys:
+        keys.append("all")
+    picked = None
+    for key in keys:
+        if key in data:
+            picked = data.get(key)
+            break
+    data = picked
     if not data:
         return None
     return CalibrationModel(

@@ -48,6 +48,8 @@ class WeightsConfig:
 @dataclass
 class PredictionConfig:
     min_confidence: float
+    market_favorite_threshold: float
+    no_bet_on_market_disagreement: bool
 
 
 @dataclass
@@ -62,6 +64,12 @@ class CalibrationConfig:
 
 
 @dataclass
+class TuningConfig:
+    enabled: bool
+    path: str
+
+
+@dataclass
 class AppConfig:
     api: ApiConfig
     timezone: str
@@ -71,6 +79,7 @@ class AppConfig:
     weights: WeightsConfig
     odds: OddsConfig
     calibration: CalibrationConfig
+    tuning: TuningConfig
     prediction: PredictionConfig
     cache: CacheConfig
 
@@ -132,9 +141,17 @@ def load_config(path: str | None = None) -> AppConfig:
         path=str(calib_raw.get("path", os.path.join(os.getcwd(), "data", "calibration.json"))),
     )
 
+    tuning_raw = raw.get("tuning", {})
+    tuning = TuningConfig(
+        enabled=bool(tuning_raw.get("enabled", True)),
+        path=str(tuning_raw.get("path", os.path.join(os.getcwd(), "data", "weights_tuned.json"))),
+    )
+
     pred_raw = raw.get("prediction", {})
     prediction = PredictionConfig(
-        min_confidence=float(pred_raw.get("min_confidence", 0.43)),
+        min_confidence=float(pred_raw.get("min_confidence", 0.50)),
+        market_favorite_threshold=float(pred_raw.get("market_favorite_threshold", 0.60)),
+        no_bet_on_market_disagreement=bool(pred_raw.get("no_bet_on_market_disagreement", True)),
     )
 
     cache_raw = raw.get("cache", {})
@@ -152,6 +169,7 @@ def load_config(path: str | None = None) -> AppConfig:
         weights=weights,
         odds=odds,
         calibration=calibration,
+        tuning=tuning,
         prediction=prediction,
         cache=cache,
     )

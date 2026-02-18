@@ -44,6 +44,14 @@ python -m src.main backtest --seasons 3
 
 This writes `data/calibration.json`, which is used automatically if `calibration.enabled: true`. Calibration is applied by strength buckets (home_strong / even / away_strong).
 
+Run per-league weight tuning (Brier + LogLoss optimization):
+
+```bash
+python -m src.main tune --seasons 3
+```
+
+This writes `data/weights_tuned.json`. Predictions use tuned league weights automatically when `tuning.enabled: true`.
+
 ## Deploy (Public)
 This project is ready for public deploy with `gunicorn`.
 
