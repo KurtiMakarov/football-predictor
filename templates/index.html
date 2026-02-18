@@ -138,6 +138,8 @@
       display: none;
       font-size: 12px;
     }
+    .flag-yes { color: #ffb3b3; font-weight: 700; }
+    .flag-no { color: #a6f3b6; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -174,6 +176,8 @@
           <th><span class="hint" title="Weighted count of missing key starters (Home)">Missing H</span></th>
           <th><span class="hint" title="Weighted count of missing key starters (Away)">Missing A</span></th>
           <th class="sortable" data-key="strength_bucket"><span class="hint" title="Strength bucket used for calibration (home_strong / even / away_strong)">Bucket</span></th>
+          <th class="sortable" data-key="market_favorite"><span class="hint" title="Most probable market outcome based on aggregated odds">Market</span></th>
+          <th class="sortable" data-key="disagreement"><span class="hint" title="Model pick differs from market favorite">Disagree</span></th>
           <th class="sortable" data-key="pick">Pick</th>
           <th class="sortable" data-key="confidence">Confidence</th>
         </tr>
@@ -244,6 +248,8 @@
           <td>${row.lineup_missing_home ?? '-'}</td>
           <td>${row.lineup_missing_away ?? '-'}</td>
           <td><span class="bucket ${row.strength_bucket ?? 'even'}">${row.strength_bucket ?? '-'}</span></td>
+          <td>${row.market_favorite ?? '-'}</td>
+          <td class="${row.disagreement === 'yes' ? 'flag-yes' : 'flag-no'}">${row.disagreement ?? '-'}</td>
           <td class="good">${row.pick}</td>
           <td>
             ${toPct(row.confidence)}
@@ -254,7 +260,7 @@
       }
       if (shown === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="14">No matches found for this date/filter.</td>`;
+        tr.innerHTML = `<td colspan="16">No matches found for this date/filter.</td>`;
         tbody.appendChild(tr);
       }
       setOddsVisibility(oddsVisible);

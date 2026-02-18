@@ -219,6 +219,15 @@ def predict_api():
                     key=lambda x: x[1],
                 )
                 pick = best[0] if pred.confidence >= cfg.prediction.min_confidence else "-"
+                market_favorite = "-"
+                disagreement = "-"
+                if pred.odds_p1 is not None and pred.odds_px is not None and pred.odds_p2 is not None:
+                    market_best = max(
+                        [("1", pred.odds_p1), ("X", pred.odds_px), ("2", pred.odds_p2)],
+                        key=lambda x: x[1],
+                    )
+                    market_favorite = market_best[0]
+                    disagreement = "yes" if pick != "-" and pick != market_favorite else "no"
 
                 rows.append(
                     {
@@ -236,6 +245,8 @@ def predict_api():
                         "lineup_missing_home": round(lineup_missing_home, 2),
                         "lineup_missing_away": round(lineup_missing_away, 2),
                         "strength_bucket": strength_bucket(strength_diff),
+                        "market_favorite": market_favorite,
+                        "disagreement": disagreement,
                         "pick": pick,
                         "confidence": round(pred.confidence, 3),
                     }
