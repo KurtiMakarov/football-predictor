@@ -153,8 +153,8 @@
       <button id="health" class="toggle">API тест</button>
       <div class="filters">
         <label>Min confidence</label>
-        <input id="min-conf" type="range" min="0.30" max="0.70" step="0.01" value="0.43" />
-        <span id="min-conf-val">0.43</span>
+        <input id="min-conf" type="range" min="0.00" max="0.70" step="0.01" value="0.00" />
+        <span id="min-conf-val">0.00</span>
       </div>
       <span class="sub">Timezone: {{ timezone }}</span>
     </div>
@@ -225,8 +225,10 @@
       const tbody = document.querySelector('#table tbody');
       tbody.innerHTML = '';
       const minConf = Number(document.getElementById('min-conf').value || 0);
+      let shown = 0;
       for (const row of currentData) {
         if (Number(row.confidence || 0) < minConf) continue;
+        shown += 1;
         const barWidth = Math.min(100, Math.max(0, Number(row.confidence || 0) * 100));
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -248,6 +250,11 @@
             <div class="bar"><span style="width:${barWidth}%"></span></div>
           </td>
         `;
+        tbody.appendChild(tr);
+      }
+      if (shown === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="14">No matches found for this date/filter.</td>`;
         tbody.appendChild(tr);
       }
       setOddsVisibility(oddsVisible);
