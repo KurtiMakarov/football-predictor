@@ -74,8 +74,9 @@ def parse_odds_payload(payload: dict) -> Optional[Tuple[float, float, float]]:
     px_list_f = filter_outliers(px_list)
     p2_list_f = filter_outliers(p2_list)
 
-    p1 = sum(p1_list_f) / len(p1_list_f)
-    px = sum(px_list_f) / len(px_list_f)
-    p2 = sum(p2_list_f) / len(p2_list_f)
+    # Median is more robust than mean when bookmaker feeds are noisy.
+    p1 = statistics.median(p1_list_f)
+    px = statistics.median(px_list_f)
+    p2 = statistics.median(p2_list_f)
 
     return _normalize(p1, px, p2)

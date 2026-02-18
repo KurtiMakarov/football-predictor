@@ -41,6 +41,7 @@ weights:
   lineup_missing: 0.04
   calibration_blend: 0.15
   home_advantage: 0.08
+  market_guard: 0.70
   lineup_position_weights:
     GK: 0.6
     DEF: 0.35

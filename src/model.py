@@ -166,6 +166,20 @@ def compute_prediction(
         p_away = (1 - w) * p_away + w * odds_p2
         p_home, p_draw, p_away = _normalize_probs(p_home, p_draw, p_away)
 
+        # Guardrail: when market has a strong favorite, avoid opposite hard picks.
+        market = [odds_p1, odds_px, odds_p2]
+        model = [p_home, p_draw, p_away]
+        market_idx = int(np.argmax(market))
+        model_idx = int(np.argmax(model))
+        market_prob = market[market_idx]
+        if market_prob >= 0.60 and model_idx != market_idx:
+            guard_w = float(weights.get("market_guard", 0.70))
+            guard_w = max(0.0, min(0.95, guard_w))
+            p_home = (1 - guard_w) * p_home + guard_w * odds_p1
+            p_draw = (1 - guard_w) * p_draw + guard_w * odds_px
+            p_away = (1 - guard_w) * p_away + guard_w * odds_p2
+            p_home, p_draw, p_away = _normalize_probs(p_home, p_draw, p_away)
+
     if base_rates is not None:
         br_home, br_draw, br_away = base_rates
         w = max(0.0, min(0.5, float(weights.get("calibration_blend", 0.15))))

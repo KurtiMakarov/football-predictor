@@ -41,6 +41,7 @@ class WeightsConfig:
     lineup_missing: float
     calibration_blend: float
     home_advantage: float
+    market_guard: float
     lineup_position_weights: Dict[str, float]
 
 
@@ -111,6 +112,7 @@ def load_config(path: str | None = None) -> AppConfig:
         lineup_missing=float(weights_raw.get("lineup_missing", 0.04)),
         calibration_blend=float(weights_raw.get("calibration_blend", 0.15)),
         home_advantage=float(weights_raw.get("home_advantage", 0.08)),
+        market_guard=float(weights_raw.get("market_guard", 0.70)),
         lineup_position_weights=dict(
             weights_raw.get(
                 "lineup_position_weights",
