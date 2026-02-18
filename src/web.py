@@ -266,7 +266,7 @@ def health():
         # lightweight check
         payload = client.leagues(name="Premier League", country="England")
         count = len(payload.get("response", []))
-        return jsonify({"ok": True, "message": f"API OK. leagues={count}"}), 200
+        return jsonify({"ok": True, "message": f"API е наред. лиги={count}"}), 200
     except RuntimeError as e:
         return jsonify({"ok": False, "message": str(e)}), 502
 

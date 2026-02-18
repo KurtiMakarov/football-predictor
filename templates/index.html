@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Football Predictions</title>
+  <title>Футболни прогнози</title>
   <style>
     :root {
       --bg: #0f1c2a;
@@ -151,14 +151,14 @@
     <div class="toolbar">
       <input id="date" type="date" />
       <button id="load">Зареди</button>
-      <button id="toggle-odds" class="toggle">Скрий odds</button>
+      <button id="toggle-odds" class="toggle">Скрий коефициенти</button>
       <button id="health" class="toggle">API тест</button>
       <div class="filters">
-        <label>Min confidence</label>
+        <label>Мин. увереност</label>
         <input id="min-conf" type="range" min="0.00" max="0.70" step="0.01" value="0.00" />
         <span id="min-conf-val">0.00</span>
       </div>
-      <span class="sub">Timezone: {{ timezone }}</span>
+      <span class="sub">Часова зона: {{ timezone }}</span>
     </div>
     <div id="error" class="error"></div>
     <table class="table" id="table">
@@ -170,16 +170,16 @@
           <th class="sortable" data-key="p1">1</th>
           <th class="sortable" data-key="px">X</th>
           <th class="sortable" data-key="p2">2</th>
-          <th class="sortable odds-col" data-key="odds_p1">Odds 1</th>
-          <th class="sortable odds-col" data-key="odds_px">Odds X</th>
-          <th class="sortable odds-col" data-key="odds_p2">Odds 2</th>
-          <th><span class="hint" title="Weighted count of missing key starters (Home)">Missing H</span></th>
-          <th><span class="hint" title="Weighted count of missing key starters (Away)">Missing A</span></th>
-          <th class="sortable" data-key="strength_bucket"><span class="hint" title="Strength bucket used for calibration (home_strong / even / away_strong)">Bucket</span></th>
-          <th class="sortable" data-key="market_favorite"><span class="hint" title="Most probable market outcome based on aggregated odds">Market</span></th>
-          <th class="sortable" data-key="disagreement"><span class="hint" title="Model pick differs from market favorite">Disagree</span></th>
-          <th class="sortable" data-key="pick">Pick</th>
-          <th class="sortable" data-key="confidence">Confidence</th>
+          <th class="sortable odds-col" data-key="odds_p1">Коеф. 1</th>
+          <th class="sortable odds-col" data-key="odds_px">Коеф. X</th>
+          <th class="sortable odds-col" data-key="odds_p2">Коеф. 2</th>
+          <th><span class="hint" title="Претеглен брой липсващи ключови титуляри (Домакин)">Липси Д</span></th>
+          <th><span class="hint" title="Претеглен брой липсващи ключови титуляри (Гост)">Липси Г</span></th>
+          <th class="sortable" data-key="strength_bucket"><span class="hint" title="Група по сила за калибрация (home_strong / even / away_strong)">Група</span></th>
+          <th class="sortable" data-key="market_favorite"><span class="hint" title="Пазарен фаворит по агрегирани коефициенти">Пазар</span></th>
+          <th class="sortable" data-key="disagreement"><span class="hint" title="Дали моделът се разминава с пазарния фаворит">Разминаване</span></th>
+          <th class="sortable" data-key="pick">Избор</th>
+          <th class="sortable" data-key="confidence">Увереност</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -203,7 +203,7 @@
       document.querySelectorAll('.odds-col').forEach(el => {
         el.style.display = show ? '' : 'none';
       });
-      document.getElementById('toggle-odds').textContent = show ? 'Скрий odds' : 'Покажи odds';
+      document.getElementById('toggle-odds').textContent = show ? 'Скрий коефициенти' : 'Покажи коефициенти';
     }
 
     let currentData = [];
@@ -260,7 +260,7 @@
       }
       if (shown === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="16">No matches found for this date/filter.</td>`;
+        tr.innerHTML = `<td colspan="16">Няма намерени мачове за избраната дата/филтър.</td>`;
         tbody.appendChild(tr);
       }
       setOddsVisibility(oddsVisible);
@@ -310,11 +310,11 @@
       const payload = await res.json();
       const errorBox = document.getElementById('error');
       if (!payload.ok) {
-        errorBox.textContent = payload.message || 'API error';
+        errorBox.textContent = payload.message || 'Грешка в API';
         errorBox.style.display = 'block';
         return;
       }
-      errorBox.textContent = payload.message || 'API OK';
+      errorBox.textContent = payload.message || 'API е наред';
       errorBox.style.display = 'block';
     });
     loadData();
