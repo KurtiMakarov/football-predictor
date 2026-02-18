@@ -1,0 +1,69 @@
+api:
+  provider: "apisports"
+  base_url: "https://v3.football.api-sports.io"
+  api_key_env: "API_FOOTBALL_KEY"
+  rapidapi_host: "v3.football.api-sports.io"
+
+timezone: "Europe/Sofia"
+
+leagues:
+  - name: "Premier League"
+    id: 39
+    season: 2025
+  - name: "La Liga"
+    id: 140
+    season: 2025
+  - name: "Serie A"
+    id: 135
+    season: 2025
+  - name: "Bundesliga"
+    id: 78
+    season: 2025
+  - name: "UEFA Champions League"
+    id: 2
+    season: 2025
+  - name: "UEFA Europa League"
+    id: 3
+    season: 2025
+
+history_matches: 10
+max_goal: 6
+
+weights:
+  ppg: 0.25
+  gd: 0.15
+  table_ppg: 0.35
+  injuries: 0.02
+  form_decay: 0.85
+  odds_prior: 0.25
+  rest_days: 0.04
+  h2h_ppg: 0.08
+  lineup_missing: 0.04
+  calibration_blend: 0.15
+  home_advantage: 0.08
+  lineup_position_weights:
+    GK: 0.6
+    DEF: 0.35
+    MID: 0.25
+    FWD: 0.3
+    UNK: 0.15
+
+prediction:
+  min_confidence: 0.43
+
+odds:
+  enabled: true
+
+calibration:
+  enabled: true
+  path: "data/calibration.json"
+
+cache:
+  enabled: true
+  ttl_seconds:
+    leagues: 86400
+    standings: 21600
+    fixtures: 3600
+    injuries: 3600
+    lineups: 1800
+    odds: 1800

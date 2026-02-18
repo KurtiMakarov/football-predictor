@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Football Predictions</title>
+  <style>
+    :root {
+      --bg: #0f1c2a;
+      --panel: #14263a;
+      --accent: #f4d35e;
+      --text: #e7eef7;
+      --muted: #9bb0c9;
+      --good: #7ae582;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1000px 600px at 10% 10%, #1b3351 0%, var(--bg) 60%);
+      color: var(--text);
+    }
+    header {
+      padding: 24px 28px;
+      border-bottom: 1px solid #1c3551;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 22px;
+      letter-spacing: 0.3px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    main {
+      padding: 22px 28px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    input[type="date"] {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid #243f60;
+      padding: 8px 10px;
+      border-radius: 6px;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid #203754;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .table th, .table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #203754;
+      font-size: 13px;
+      text-align: left;
+    }
+    .table th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .pill {
+      background: #203754;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .good { color: var(--good); font-weight: 600; }
+    .bucket {
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 999px;
+      display: inline-block;
+      font-size: 12px;
+    }
+    .bucket.home_strong { background: #1b5e20; color: #c8f7d2; }
+    .bucket.even { background: #37474f; color: #e0e0e0; }
+    .bucket.away_strong { background: #7f1d1d; color: #ffd0d0; }
+    .bar {
+      height: 6px;
+      background: #203754;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #f4d35e, #7ae582);
+      width: 0%;
+    }
+    .toggle {
+      background: #203754;
+      color: var(--text);
+      border: 1px solid #2f4b6a;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    th.sortable { cursor: pointer; }
+    th.sortable:after { content: " ⇅"; color: #6f8ba7; font-size: 11px; }
+    .filters {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .filters input[type="range"] { width: 120px; }
+    th .hint {
+      border-bottom: 1px dotted #5b7aa1;
+      cursor: help;
+    }
+    .error {
+      margin: 10px 0 0 0;
+      padding: 8px 10px;
+      background: #5c1a1a;
+      border: 1px solid #7f1d1d;
+      color: #ffd0d0;
+      border-radius: 6px;
+      display: none;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Прогнози 1/X/2</h1>
+    <div class="sub">Лиги: Англия, Испания, Германия, Италия, ШЛ, ЛЕ</div>
+  </header>
+  <main>
+    <div class="toolbar">
+      <input id="date" type="date" />
+      <button id="load">Зареди</button>
+      <button id="toggle-odds" class="toggle">Скрий odds</button>
+      <button id="health" class="toggle">API тест</button>
+      <div class="filters">
+        <label>Min confidence</label>
+        <input id="min-conf" type="range" min="0.30" max="0.70" step="0.01" value="0.43" />
+        <span id="min-conf-val">0.43</span>
+      </div>
+      <span class="sub">Timezone: {{ timezone }}</span>
+    </div>
+    <div id="error" class="error"></div>
+    <table class="table" id="table">
+      <thead>
+        <tr>
+          <th class="sortable" data-key="date">Дата</th>
+          <th class="sortable" data-key="league">Лига</th>
+          <th>Мач</th>
+          <th class="sortable" data-key="p1">1</th>
+          <th class="sortable" data-key="px">X</th>
+          <th class="sortable" data-key="p2">2</th>
+          <th class="sortable odds-col" data-key="odds_p1">Odds 1</th>
+          <th class="sortable odds-col" data-key="odds_px">Odds X</th>
+          <th class="sortable odds-col" data-key="odds_p2">Odds 2</th>
+          <th><span class="hint" title="Weighted count of missing key starters (Home)">Missing H</span></th>
+          <th><span class="hint" title="Weighted count of missing key starters (Away)">Missing A</span></th>
+          <th class="sortable" data-key="strength_bucket"><span class="hint" title="Strength bucket used for calibration (home_strong / even / away_strong)">Bucket</span></th>
+          <th class="sortable" data-key="pick">Pick</th>
+          <th class="sortable" data-key="confidence">Confidence</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <script>
+    const dateInput = document.getElementById('date');
+    const today = new Date().toISOString().slice(0,10);
+    dateInput.value = today;
+
+    function toPct(v) {
+      if (v === null || v === undefined || Number.isNaN(v)) return '-';
+      return `${(Number(v) * 100).toFixed(1)}%`;
+    }
+
+    let oddsVisible = true;
+
+    function setOddsVisibility(show) {
+      oddsVisible = show;
+      document.querySelectorAll('.odds-col').forEach(el => {
+        el.style.display = show ? '' : 'none';
+      });
+      document.getElementById('toggle-odds').textContent = show ? 'Скрий odds' : 'Покажи odds';
+    }
+
+    let currentData = [];
+    let sortKey = 'confidence';
+    let sortDir = 'desc';
+
+    function sortData() {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      currentData.sort((a, b) => {
+        const av = a[sortKey];
+        const bv = b[sortKey];
+        if (av === bv) return 0;
+        if (av === null || av === undefined) return 1;
+        if (bv === null || bv === undefined) return -1;
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return (av - bv) * dir;
+        }
+        return String(av).localeCompare(String(bv)) * dir;
+      });
+    }
+
+    function renderData() {
+      const tbody = document.querySelector('#table tbody');
+      tbody.innerHTML = '';
+      const minConf = Number(document.getElementById('min-conf').value || 0);
+      for (const row of currentData) {
+        if (Number(row.confidence || 0) < minConf) continue;
+        const barWidth = Math.min(100, Math.max(0, Number(row.confidence || 0) * 100));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.date}</td>
+          <td><span class="pill">${row.league}</span></td>
+          <td>${row.home} vs ${row.away}</td>
+          <td>${toPct(row.p1)}</td>
+          <td>${toPct(row.px)}</td>
+          <td>${toPct(row.p2)}</td>
+          <td class="odds-col">${toPct(row.odds_p1)}</td>
+          <td class="odds-col">${toPct(row.odds_px)}</td>
+          <td class="odds-col">${toPct(row.odds_p2)}</td>
+          <td>${row.lineup_missing_home ?? '-'}</td>
+          <td>${row.lineup_missing_away ?? '-'}</td>
+          <td><span class="bucket ${row.strength_bucket ?? 'even'}">${row.strength_bucket ?? '-'}</span></td>
+          <td class="good">${row.pick}</td>
+          <td>
+            ${toPct(row.confidence)}
+            <div class="bar"><span style="width:${barWidth}%"></span></div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+      setOddsVisibility(oddsVisible);
+    }
+
+    async function loadData() {
+      const date = dateInput.value || 'today';
+      const res = await fetch(`/predict?date=${date}`);
+      const payload = await res.json();
+      const errorBox = document.getElementById('error');
+      if (payload && payload.error) {
+        errorBox.textContent = payload.error;
+        errorBox.style.display = 'block';
+        currentData = [];
+        renderData();
+        return;
+      }
+      errorBox.style.display = 'none';
+      currentData = payload;
+      sortData();
+      renderData();
+    }
+
+    document.getElementById('load').addEventListener('click', loadData);
+    document.getElementById('toggle-odds').addEventListener('click', () => {
+      setOddsVisibility(!oddsVisible);
+    });
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        if (key === sortKey) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortKey = key;
+          sortDir = 'desc';
+        }
+        sortData();
+        renderData();
+      });
+    });
+    document.getElementById('min-conf').addEventListener('input', (e) => {
+      document.getElementById('min-conf-val').textContent = Number(e.target.value).toFixed(2);
+      renderData();
+    });
+    document.getElementById('health').addEventListener('click', async () => {
+      const res = await fetch('/health');
+      const payload = await res.json();
+      const errorBox = document.getElementById('error');
+      if (!payload.ok) {
+        errorBox.textContent = payload.message || 'API error';
+        errorBox.style.display = 'block';
+        return;
+      }
+      errorBox.textContent = payload.message || 'API OK';
+      errorBox.style.display = 'block';
+    });
+    loadData();
+  </script>
+</body>
+</html>
