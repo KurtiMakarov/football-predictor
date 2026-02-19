@@ -185,7 +185,7 @@ def predict(cfg: AppConfig, date_str: str) -> None:
                     pos = starter_pos.get(pid, "")
                     lineup_missing_away += pos_weights.get(pos, pos_weights.get("UNK", 0.1))
 
-                strength_diff = compute_strength_diff(
+            strength_diff = compute_strength_diff(
                 home_form=home_form,
                 away_form=away_form,
                 home_table=table.get(home_id),
